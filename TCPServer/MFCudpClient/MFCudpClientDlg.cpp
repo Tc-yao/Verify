@@ -75,7 +75,7 @@ typedef struct _LISTITME
 {
 	TCHAR szName[20];
 	TCHAR szSex[10];
-	TCHAR szAge[8];
+	int szAge;
 }LISTITME;
 LISTITME g_ListGroup[] = {
 	{"Bob","boy",21},
@@ -117,14 +117,22 @@ BOOL CMFCudpClientDlg::OnInitDialog()
 	m_progress.SetRange(0, 1000);
 	SetTimer(8888, 1000, NULL);
 
-	m_List.InsertColumn(0, "name", 50);
+	m_List.InsertColumn(0, "name", 0,50);
 	m_List.InsertColumn(1, "sex", 0, 50);
 	m_List.InsertColumn(2, "age", 0, 50);
+// 	
+// 	m_List.InsertItem(0, "Bob");
+// 	m_List.SetItemText(0, 1, "boy");
 
+	CString str;
+	for (int i=0;i<sizeof(g_ListGroup) / sizeof(g_ListGroup[0]);i++)
+	{
+		m_List.InsertItem(i, g_ListGroup[i].szName);
+		m_List.SetItemText(i, 1, g_ListGroup[i].szSex);
+		str.Format("%d", g_ListGroup[i].szAge);
+		m_List.SetItemText(i, 2,str.GetString());
+	}
 	
-	m_List.InsertItem(0, "Anna");
-	m_List.InsertItem(0, "Bob");
-	m_List.SetItemText(0,1, "boy");
 	
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
