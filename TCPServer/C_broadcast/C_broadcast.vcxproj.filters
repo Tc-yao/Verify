@@ -24,15 +24,18 @@
     <ClInclude Include="targetver.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\MFCudpClient\initsock.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="new.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="TCPServer.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="TCPClient.cpp">
+    <ClCompile Include="C_broadcast.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
