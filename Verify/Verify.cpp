@@ -5,11 +5,18 @@
 #include "stdafx.h"
 #include "Verify.h"
 #include "VerifyDlg.h"
+#include "Common.h"
+#include "nomodule/LoadPE.h"
+#include "LuaFunction.h"
+extern "C"
+{
+#include "nomodule/MemoryModule.h"
 
+}
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
-
+#include <memory>
 
 // CVerifyApp
 
@@ -54,6 +61,12 @@ BOOL CVerifyApp::InitInstance()
 
 	AfxEnableControlContainer();
 
+	if (!AfxOleInit())
+	{
+		//AfxMessageBox(IDP_OLE_INIT_FAILED);// 初始化OLE失败
+		return FALSE;
+	}
+
 	// 创建 shell 管理器，以防对话框包含
 	// 任何 shell 树视图控件或 shell 列表视图控件。
 	CShellManager *pShellManager = new CShellManager;
@@ -70,45 +83,96 @@ BOOL CVerifyApp::InitInstance()
 	// 例如修改为公司或组织名
 	SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
 
-	if (IsDebuggerPresent())
-	{
-		AllocConsole();
-		freopen("CONIN$", "r+t", stdin);
-		freopen("CONOUT$", "w+t", stdout);
-		//SetCurrentDirectory(_T("../Bin"));
-	}
-	TCHAR szPath[MAX_PATH] = { 0 };
-	SHGetSpecialFolderPath(NULL, szPath, CSIDL_APPDATA, FALSE);
-	printf("%S", szPath);
+	//*********************************************************************
+// 	if (IsDebuggerPresent())   //如果被调试
+// 	{
+// 		AllocConsole();   //分配一个控制台
+// 		freopen("CONIN$", "r+t", stdin);
+// 		freopen("CONOUT$", "w+t", stdout);
+// 
+// 		//SetCurrentDirectory(_T("../Bin"));
+// 	}
+	//************************************************************************
 
-	CString strDir = szPath;
-	strDir += "\\VerifyControl";
-	printf("%S\n", strDir.GetString());
-	if (FALSE == PathIsDirectory(strDir))
-	{
-		HANDLE hTFile;
-		printf("nothing,so create\n");
-		BOOL bCreate = CreateDirectory(strDir, NULL);
-		strDir += "\\Config.ini";
-		printf("%S\n", strDir.GetBuffer());
-		hTFile = CreateFileW(strDir, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-			CREATE_ALWAYS,
-			FILE_ATTRIBUTE_NORMAL, NULL);
-		DWORD dWrite;
-		const char *szWrite = "[peizhi]";
-		WriteFile(hTFile, szWrite, strlen(szWrite), &dWrite, NULL);
-		CloseHandle(hTFile);
-		strDir += ":vfcache_Tc";//flout_ file
-		printf("%S", strDir.GetString());
-		hTFile = CreateFileW(strDir, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-			CREATE_ALWAYS,
-			FILE_ATTRIBUTE_NORMAL, NULL);
+	m_L = luaL_newstate();
+	luaL_openlibs(m_L);
 
-		
+	lua_tinker::def(m_L, "ShowError", Lua_ShowError);
+	
+	lua_register(m_L, "GetProcessWindow", Lua_GetProcessWindow);
+	lua_register(m_L, "GetProcessNum", Lua_GetProceesNum);
+	lua_register(m_L, "DbgPrint", Lua_DbgPrint);
+	//准备无模块
+	TCHAR szPath[MAX_PATH] = { 0 };  //栈上
 
-		
+	SHGetSpecialFolderPath(NULL, szPath, CSIDL_SYSTEM, FALSE);
+	_tcscat(szPath, _T("\\Kernel32.dll"));
+	printf("%S\n", szPath);
 
-	}
+	CFile f(szPath, CFile::modeRead);
+
+	//构建缓冲区
+	//printf("%lld\n", f.GetLength());
+	std::unique_ptr<byte> pBuff(new byte[f.GetLength()]);
+	f.Read(pBuff.get(), f.GetLength());
+	f.Close();
+
+	HMEMORYMODULE  hDll = MemoryLoadLibrary(pBuff.get());
+	ENSURE(hDll != NULL);
+
+	SCOPE_EXIT(MemoryFreeLibrary(hDll));                   //BUG 释放会出错
+
+	fCreateFileW = (decltype(fCreateFileW))MemoryGetProcAddress(hDll, "CreateFileW");
+	fReadFile = (decltype(fReadFile))MemoryGetProcAddress(hDll, "ReadFile");
+	fWriteFile = (decltype(fWriteFile))MemoryGetProcAddress(hDll, "WriteFile");
+	fCloseHandle = (decltype(fCloseHandle))MemoryGetProcAddress(hDll, "CloseHandle");
+	fGetFileSize = (decltype(fGetFileSize))MemoryGetProcAddress(hDll, "GetFileSize");
+	fCreateThread = (decltype(fCreateThread))MemoryGetProcAddress(hDll, "CreateThread");
+
+	// 	printf("新的 CreateFileW :%X\n", fCreateFileW);
+	// 	printf("新的 ReadFile :%X\n", fReadFile);
+	// 	printf("新的 WriteFile :%X\n", fWriteFile);
+	// 	printf("新的 CloseHandle :%X\n", fCloseHandle);
+	// 	printf("新的 GetFileSize :%X\n", fGetFileSize);
+	// 	printf("新的 CreateThread :%X\n", fCreateThread);
+	_DbgPrint("Debug:无模块Kernel32地址:0x%X", hDll);
+	_DbgPrint("Debug:自己的--->CreateFileW:0x%X", fCreateFileW);
+	_DbgPrint("Debug:自己的--->ReadFile:0x%X", fReadFile);
+	_DbgPrint("Debug:自己的--->WriteFile:0x%X", fWriteFile);
+	_DbgPrint("Debug:自己的--->CloseHandle:0x%X", fCloseHandle);
+	_DbgPrint("Debug:自己的--->GetFileSize:0x%X", fGetFileSize);
+	
+	//_DbgPrint("Debug:my---->createfile:0x%X", fCreateThread);
+	//fCreateThread(NULL, 0, hello, 0, 0, NULL);
+	
+	
+// 		
+// 		SHGetSpecialFolderPath(NULL, szPath, CSIDL_APPDATA, FALSE);
+// 		printf("%S", szPath);
+// 	
+// 		CString strDir = szPath;
+// 		strDir += "\\VerifyControl";
+// 		printf("%S\n", strDir.GetString());
+// 		if (FALSE == PathIsDirectory(strDir))
+// 		{
+// 			HANDLE hTFile;
+// 			printf("nothing,so create\n");
+// 			BOOL bCreate = CreateDirectory(strDir, NULL);
+// 			strDir += "\\Config.ini";
+// 			printf("%S\n", strDir.GetBuffer());
+// 			hTFile = CreateFileW(strDir, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+// 				CREATE_ALWAYS,
+// 				FILE_ATTRIBUTE_NORMAL, NULL);
+// 			DWORD dWrite;
+// 			const char *szWrite = "[peizhi]";
+// 			WriteFile(hTFile, szWrite, strlen(szWrite), &dWrite, NULL);
+// 			CloseHandle(hTFile);
+// 			strDir += ":vfcache_Tc";//flout_ file
+// 			printf("%S", strDir.GetString());
+// 			hTFile = CreateFileW(strDir, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+// 				CREATE_ALWAYS,
+// 				FILE_ATTRIBUTE_NORMAL, NULL);
+// 		}
 
 
 

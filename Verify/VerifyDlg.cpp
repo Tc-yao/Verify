@@ -64,6 +64,7 @@ BEGIN_MESSAGE_MAP(CVerifyDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BUTTON1, &CVerifyDlg::OnBnClickedButton1)
 END_MESSAGE_MAP()
 
 
@@ -152,3 +153,14 @@ HCURSOR CVerifyDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+
+void CVerifyDlg::OnBnClickedButton1()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	luaL_dofile(theApp.m_L, "Script.lua");
+	luaL_dofile(((CVerifyApp*)AfxGetApp())->m_L, "Script.lua");
+	//theApp.m_L;
+	//((CVerifyApp*)AfxGetApp())->m_L;
+
+}

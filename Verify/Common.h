@@ -1,25 +1,36 @@
 #pragma once
-#include "stdafx.h"
-#include "Common.h"
-int GetRandomNum(int iMin, int iMax)
-{
-	static std::random_device rd;
-	static std::mt19937 mt(rd());
-	std::uniform_int_distribution<>dis(iMin, iMax);
-	return dis(mt);
+#include <string>
+#include <stdexcept>
 
-}
-std::string GetRandomString(int num)
-{
-	if (num > 4095) num = 4095;
-	char buff[4096];
-	for (int i = 0; i < num; ++i)
-	{
-		buff[i] = GetRandomNum('A', 'z');
-		if(buff[i]>90 && buff[i] < 97){
-			buff[i] = '_';
-		}
-	}
-	buff[num] = 0;
-	return buff;
-}
+#ifdef _DEBUG
+	#define _DbgPrint    MyDbgPrint
+#else
+	#define _DbgPrint(...)
+#endif
+
+void MyDbgPrint(const char *fmt, ...);
+void MyDbgPrint(char *fmt, ...);
+void MyDbgPrint(wchar_t *fmt, ...);
+void LogError(const char *fmt, ...);
+
+std::string GetRandomString(int num);
+
+#define NT_SUCCESS(Status)          ((NTSTATUS)(Status) >= 0)
+#define STATUS_SUCCESS              ((NTSTATUS)0x00000000L)
+#define STATUS_INVALID_INFO_CLASS   ((NTSTATUS)0xC0000003L)
+#define STATUS_INFO_LENGTH_MISMATCH ((NTSTATUS)0xC0000004L)
+#define STATUS_ACCESS_DENIED        ((NTSTATUS)0xC0000022L)
+#define STATUS_DEBUGGER_INACTIVE    ((NTSTATUS)0xC0000354L)
+#define STATUS_NO_YIELD_PERFORMED   ((NTSTATUS)0x40000024L)
+#define ENSURE_RUNTIME(cond,errmsg) ENSURE_THROW(cond, throw std::runtime_error(errmsg))
+#define ENSURE_WIN32(cond) ENSURE_THROW(cond, ThrowWin32Exception() )
+#define ENSURE_SUCCEEDED(hr) \
+if (SUCCEEDED(hr)) \
+if (SUCCEEDED(hr)) \
+else ENSURE(SUCCEEDED(hr))(Win32ErrorMessage(hr))
+
+#define ALIGN_DOWN(length, type) \
+	((ULONG)(length)& ~(sizeof(type)-1))
+
+#define ALIGN_UP(length, type) \
+	(ALIGN_DOWN(((ULONG)(length)+sizeof(type)-1), type))

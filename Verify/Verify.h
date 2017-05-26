@@ -23,7 +23,8 @@ public:
 // ÷ÿ–¥
 public:
 	virtual BOOL InitInstance();
-
+public: 
+	lua_State * m_L;
 //  µœ÷
 
 	DECLARE_MESSAGE_MAP()
